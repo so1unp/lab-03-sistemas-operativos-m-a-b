@@ -8,6 +8,9 @@
 #include <errno.h>        // Para perror
 #include <sys/resource.h> // Para getpriority y PRIO_PROCESS
 
+/**
+ * @brief Función que simula trabajo pesado
+ */
 int busywork(void)
 {
     struct tms buf;
@@ -17,7 +20,9 @@ int busywork(void)
     }
 }
 
-// Manejador de señales para los hijos
+/**
+ * @brief Manejador de la señal SIGCHLD
+ */
 void sigchld_handler()
 {
     struct rusage usage;
@@ -26,18 +31,22 @@ void sigchld_handler()
     long total_time = usage.ru_utime.tv_sec + usage.ru_stime.tv_sec; // suma de tiempos de usuario y sistema
 
     printf("Child %d (nice %2d):\t%3li\n", getpid(), getpriority(PRIO_PROCESS, (id_t)getpid()), total_time);
+
+    exit(EXIT_SUCCESS);
 }
 
 int main(int argc, char *argv[])
 {
 
-    if (argc < 4)
+    if (argc != 4)
     {
         fprintf(stderr, "Uso: %s <num_procesos> <segundos> <prioridad>\n", argv[0]);
         return EXIT_FAILURE;
     }
 
     int num_procesos = atoi(argv[1]);
+    int segundos = atoi(argv[2]);
+
     pid_t pid[num_procesos];
 
     // Cantidad de procesos a crear
@@ -63,13 +72,21 @@ int main(int argc, char *argv[])
         }
     }
 
-    sleep((unsigned int)atoi(argv[2])); // Espero cantidad des segundos indicada
+    if (segundos > 0)
+    {
+        // Si los segundos son mayor a cero, esperamos y terminamos
+        sleep((unsigned int)segundos);
+    }
+    else
+    {
+        // Si es 0, ejecutamos indefinidamente
+        pause();
+    }
 
     // Envio señal a los hijos
     for (int i = 0; i < num_procesos; i++)
     {
-        kill(pid[i], SIGTERM); // Mando señal kill a todos los procesos del grupo
+        kill(pid[i], SIGTERM);
     }
-
     exit(EXIT_SUCCESS);
 }
