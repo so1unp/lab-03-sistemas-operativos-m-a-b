@@ -60,8 +60,21 @@ int main(int argc, char *argv[])
 //==========================================================================
 // Código para la prueba con fork()
 //==========================================================================
-void test_fork(int count, int wait)
+void test_fork(int count, int wait1)
 {
+    pid_t pids[count];
+    for (int i = 0; i < count; i++)
+    {
+        if (wait1 != 0)
+        {
+            pids[i] = fork();
+        }
+        wait(0);
+    }
+    
+
+
+
 }
 
 //==========================================================================
@@ -70,4 +83,24 @@ void test_fork(int count, int wait)
 
 void test_thread(int count, int wait) 
 {
+    pthread_t *threads;
+    threads = (pthread_t*) malloc(count * sizeof(pthread_t));
+    pthread_attr_t attr;
+
+
+    for(int i = 0; i < count; i++) {
+        int thread = pthread_create(&threads[i], &attr, NULL, (void *) i);
+        if(thread != 0) {
+             fprintf(stderr, "Error: No se pudo crear el hilo.\n");
+             exit(EXIT_FAILURE);
+        }
+    }
+
+    
+    for(int j = 0; j < count; j++) {
+        pthread_join(threads[j], NULL);
+    }
+
+    pthread_exit(NULL);
+
 }
