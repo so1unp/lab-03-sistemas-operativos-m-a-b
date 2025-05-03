@@ -96,9 +96,20 @@ int main(int argc, char *argv[]) {
     // COMPLETAR: usar CPU_ZERO, CPU_SET y pthread_attr_setaffinity_np()
 
     // Crea los hilos.
-    // COMPLETAR
 
+    for(int i = 0; i < count; i++) {
+       int thread = pthread_create(&threads[i], &attr, write_buffer, (void *) i);
+       if(thread != 0) {
+            fprintf(stderr, "Error: No se pudo crear el hilo.\n");
+            exit(EXIT_FAILURE);
+       }
+    }
+    
+    // COMPLETAR
     // Espera a que terminen todos los hilos.
+    for(int j = 0; j < count; j++) {
+        pthread_join(threads[j], NULL);
+    }
     // COMPLETAR
 
     // Imprime el buffer.
