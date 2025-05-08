@@ -88,55 +88,45 @@ int main(int argc, char *argv[])
     // Inicializa la estructura attr
     pthread_attr_init(&attr);
 
-    // Indica que al crear un hilo usando attr como parámetros, este debe
-    // utilizar la política de planificación indicada en dichos parámetros.
     // COMPLETAR: pthread_attr_setinheritsched();
-    pthread_attr_setinheritsched(&attr, sched_policy);
+    pthread_attr_setinheritsched(&attr, sched_policy); // Indica que al crear un hilo usando attr como parámetros, este debe utilizar la política de planificación indicada en dichos parámetros.
 
-    // Especifica la política de planificación.
     // COMPLETAR: pthread_attr_setschedpolicy();
-    pthread_attr_setschedpolicy(&attr, sched_policy);
+    pthread_attr_setschedpolicy(&attr, sched_policy); // Especifica la política de planificación.
 
     // Indica el nivel de prioridad que tendrá el hilo creado utilizando attr.
     param.sched_priority = 1;
     // COMPLETAR: pthread_attr_setschedparam();
-    pthread_attr_setschedparam(&attr, &param);
+    pthread_attr_setschedparam(&attr, &param); // Establece el nivel de prioridad del hilo.
 
     // Indica que el hilo creado utilizando el atributo attr debe ejecutar
     // siempre en la CPU 0.
     // COMPLETAR: usar CPU_ZERO, CPU_SET y
     // pthread_attr_setaffinity_np(&attr,CPU_SET, CPU_SET);
 
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(0, &cpuset);
-    pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset);
+    cpu_set_t cpuset;                                               // Estructura para definir la afinidad de CPU
+    CPU_ZERO(&cpuset);                                              // Inicializa la máscara de CPU
+    CPU_SET(0, &cpuset);                                            // Establece la CPU 0 como la única CPU en la que el hilo puede ejecutarse
+    pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpuset); // Establece la afinidad de CPU para el hilo
 
     // Crea los hilos.
-    for (int i = 0; i < count; i++)
+    for (int t = 0; t < count; t++)
     {
-        int thread = pthread_create(&threads[i], &attr, write_buffer, (void *)i);
-        if (thread != 0)
-        {
-            fprintf(stderr, "Error: No se pudo crear el hilo.\n");
-            exit(EXIT_FAILURE);
-        }
+        pthread_create(&threads[t], &attr, write_buffer, (void *)(long)t); // Crea un hilo y le pasa el índice t como argumento
     }
 
     // COMPLETAR
-    // Espera a que terminen todos los hilos.
     for (int j = 0; j < count; j++)
     {
-        pthread_join(threads[j], NULL);
+        pthread_join(threads[j], NULL); // Espera a que terminen todos los hilos.
     }
-    // COMPLETAR
 
-    // Imprime el buffer.
+    // COMPLETAR
     for (i = 0; i < count * items; i++)
     {
-        printf("%d ", buf[i]);
+        printf("%d ", buf[i]); // Imprime el buffer.
     }
-    printf("\n");
+    printf("\n"); // Salto de línea al final
 
-    pthread_exit(NULL);
+    pthread_exit(NULL); // Termina el hilo principal
 }
