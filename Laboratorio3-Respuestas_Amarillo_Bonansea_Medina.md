@@ -54,78 +54,145 @@ Además, el proceso hijo muestra un uso de CPU del 99%, lo que indica que está 
 
 - No se aprecian diferencias significativas en los resultados entre la ejecución local y en el servidor de la cátedra (se ejecuto 5 veces en ambos lugares).
 - La consistencia en los resultados entre la máquina local y el servidor sugiere que el comportamiento del planificador en relación con procesos de baja prioridad es similar en ambos sistemas, al menos para esta prueba específica con un solo proceso hijo.
+- La principal diferencia entre ambas ejecuciones podria llegar a darse en que el servidor de la catedra tiene una carga de trabajo diferente, con una mayor cantidad de procesos y usuarios activos, lo que podría afectar el rendimiento y la asignación de recursos. Pero en este caso, no se observó una diferencia notable en el tiempo de ejecución.
 
 ### 3. Ejecutar `./forkprio 10 30 1 | sort -k 4 -h` y describir el resultado de la ejecución. ¿Por qué el total del tiempo ejecutado por los procesos hijos puede ser mayor que el tiempo que espera el proceso padre?
 
 ```bash
 $ ./forkprio 10 30 1 | sort -k 4 -h
-Child 379602 (nice  1):  29
-Child 379603 (nice  1):  29
-Child 379604 (nice  1):  29
-Child 379605 (nice  1):  29
-Child 379606 (nice  1):  29
-Child 379607 (nice  1):  29
-Child 379608 (nice  1):  29
-Child 379609 (nice  1):  29
-Child 379610 (nice  1):  29
-Child 379611 (nice  1):  29
+Child 18239 (nice  1):   23
+Child 18240 (nice  1):   22
+Child 18241 (nice  1):   23
+Child 18242 (nice  1):   24
+Child 18243 (nice  1):   22
+Child 18244 (nice  1):   23
+Child 18245 (nice  1):   24
+Child 18246 (nice  1):   23
+Child 18247 (nice  1):   23
+Child 18248 (nice  1):   24
 ```
 
 En la salida podemos observar que:
 
 1. Se crearon 10 procesos hijos, cada uno con un nice value de 1, lo que indica una prioridad ligeramente reducida.
 
-2. Todos los procesos hijos reportan haber ejecutado durante 29 segundos, aunque el programa padre estaba configurado para esperar 30 segundos.
+2. El tiempo de ejecución de los procesos hijos varía entre 22 y 24 segundos, aunque el programa padre estaba configurado para esperar 30 segundos.
 
-3. La salida está ordenada por la cuarta columna (el tiempo de ejecución) usando el comando `sort -k 4 -h`, pero como todos los procesos tienen el mismo tiempo de ejecución, no hay diferencia visible en el ordenamiento.
+3. La salida está ordenada por la cuarta columna (el tiempo de ejecución) utilizando el comando `sort -k 4 -h`, lo que nos permite ver claramente la distribución de tiempos de CPU entre los procesos hijos.
 
-4. La suma total del tiempo de CPU utilizado por todos los procesos hijos es de 290 segundos (10 procesos × 29 segundos cada uno), lo cual es aproximadamente 9,7 veces mayor que el tiempo real transcurrido (30 segundos).
+4. La suma total del tiempo de CPU utilizado por todos los procesos hijos es aproximadamente 231 segundos (sumando todos los tiempos individuales), lo cual es mayor que el tiempo real transcurrido (30 segundos).
 
-El total del tiempo ejecutado por los procesos hijos puede ser mayor que el tiempo que espera el proceso padre por varias razones:
+El total del tiempo ejecutado por los procesos hijos puede ser mayor que el tiempo que espera el proceso padre debido a los siguientes factores:
 
-1. **Paralelismo real en sistemas multiprocesador**: En un sistema con múltiples núcleos o procesadores, varios procesos hijos pueden ejecutarse simultáneamente. Si tenemos 10 procesos ejecutándose en paralelo durante 30 segundos, el tiempo total de CPU utilizado sería 300 segundos (10 × 30), aunque el tiempo de reloj transcurrido sea de solo 30 segundos.
+1. **Paralelismo real en sistemas multiprocesador**: En un sistema con múltiples núcleos o procesadores, varios procesos hijos pueden ejecutarse simultáneamente en diferentes núcleos. Si hay 10 procesos ejecutándose en paralelo durante aproximadamente 23 segundos cada uno, el tiempo total de CPU utilizado sería cercano a 230 segundos, aunque el tiempo de reloj transcurrido sea de solo 30 segundos.
 
-2. **Sobrecarga del planificador**: El kernel debe dedicar tiempo para cambiar de contexto entre los diferentes procesos. Esto añade tiempo adicional de CPU que no es contabilizado en el tiempo de espera del proceso padre.
+2. **Tiempo de CPU vs. tiempo de reloj**: El tiempo que reporta cada proceso hijo es su tiempo de CPU efectivo (cuánto tiempo el procesador estuvo ejecutando sus instrucciones), no el tiempo de reloj transcurrido. En un sistema multitarea, varios procesos comparten los recursos de CPU, lo que permite que la suma de sus tiempos de CPU exceda el tiempo real transcurrido.
 
-3. **Contabilidad de tiempo de sistema versus tiempo de usuario**: El tiempo reportado por los procesos hijos incluye tanto el tiempo de usuario como el tiempo de sistema utilizado por cada proceso, mientras que el proceso padre simplemente espera durante un tiempo fijo sin considerar estos detalles.
+3. **Planificación del sistema operativo**: El planificador del sistema operativo asigna tiempo de CPU a múltiples procesos de forma concurrente, alternando entre ellos. Esto permite que varios procesos avancen "simultáneamente" desde la perspectiva del usuario, aunque técnicamente están compartiendo tiempo de CPU.
 
-4. **Retardos en la entrega de señales**: Aunque el padre espera 30 segundos y luego envía una señal SIGTERM a todos sus hijos, puede haber pequeños retardos entre el momento en que se envía la señal y cuando cada proceso hijo la recibe y procesa.
+4. **Distribución en múltiples núcleos**: Si cada proceso hijo se ejecuta principalmente en un núcleo fisico distinto, cada uno puede acumular tiempo de CPU independientemente, resultando en una suma total mayor al tiempo real transcurrido.
+
+En este caso específico, observamos que ningún proceso hijo alcanzó los 30 segundos completos de tiempo de CPU (varían entre 22-24 segundos), lo que sugiere que hubo cierta competencia por recursos de CPU incluso con la disponibilidad de múltiples núcleos. Esto puede deberse a que algunos procesos compartieron núcleos o a que el sistema operativo reservó recursos para otros procesos del sistema.
 
 ### 4. Si el comando anterior se ejecuta indicando que no se cambien las prioridades de los procesos hijos, ¿Cúal es el resultado? Explicar por qué.
 
 ```bash
 $ ./forkprio 10 30 0 | sort -k 4 -h
-Child 408390 (nice  0):  29
-Child 408391 (nice  0):  29
-Child 408392 (nice  0):  29
-Child 408393 (nice  0):  29
-Child 408394 (nice  0):  29
-Child 408395 (nice  0):  29
-Child 408396 (nice  0):  29
-Child 408397 (nice  0):  29
-Child 408398 (nice  0):  29
-Child 408399 (nice  0):  29
+Child 21973 (nice  0):   23
+Child 21974 (nice  0):   24
+Child 21975 (nice  0):   23
+Child 21976 (nice  0):   23
+Child 21977 (nice  0):   23
+Child 21978 (nice  0):   23
+Child 21979 (nice  0):   23
+Child 21980 (nice  0):   23
+Child 21981 (nice  0):   23
+Child 21982 (nice  0):   23
 ```
 
-Al ejecutar el comando sin modificar las prioridades de los procesos hijos (nice=0), observamos que los resultados son idénticos a los obtenidos cuando ejecutamos los procesos con prioridad reducida (nice=1):
+Al ejecutar el comando sin modificar las prioridades de los procesos hijos (nice=0), observamos resultados muy similares a los obtenidos con prioridad reducida (nice=1):
 
-1. En ambos casos, todos los procesos hijos reportan haber ejecutado durante 29 segundos, casi el tiempo completo que el padre estuvo esperando (30 segundos).
+1. En ambos casos (nice=0 y nice=1), los procesos hijos reportan tiempos de ejecución entre 22 y 24 segundos, cuando el proceso padre estuvo esperando 30 segundos.
 
-2. La suma total del tiempo de CPU utilizado es aproximadamente 290 segundos en ambos casos, que es casi 10 veces el tiempo de espera del proceso padre.
+2. La suma total del tiempo de CPU utilizado en este caso es aproximadamente 231 segundos, prácticamente idéntica al caso anterior.
 
-Esta similitud en los resultados puede explicarse por las características del hardware utilizado y el comportamiento del planificador:
+3. La distribución de los tiempos de ejecución es también muy similar, con la mayoría de los procesos ejecutándose durante 23 segundos.
 
-- **Hardware de alto rendimiento**: La prueba se ejecutó en un procesador Intel Core i7-10700K, que cuenta con 8 núcleos físicos y 16 hilos lógicos gracias a la tecnología Hyper-Threading. Con esta capacidad de procesamiento paralelo, el sistema puede ejecutar eficientemente los 10 procesos hijos casi simultáneamente, independientemente de las pequeñas diferencias en sus valores de nice.
-
-- **Diferencia mínima entre los valores de nice**: La diferencia entre nice=0 y nice=1 es muy pequeña en términos de prioridad. En un sistema con recursos abundantes como este i7, esta diferencia es prácticamente imperceptible, ya que hay suficientes recursos de CPU disponibles para todos los procesos.
-
-- **Planificador CFS (Completely Fair Scheduler)**: El planificador moderno de Linux está diseñado para ser justo en la asignación de tiempo de CPU, especialmente en sistemas con múltiples núcleos. Cuando hay suficientes recursos disponibles, el planificador puede asignar tiempo de CPU a todos los procesos de manera eficiente sin que se note la diferencia en prioridad.
-
-- **Asignación de procesos a diferentes núcleos**: Con 8 núcleos físicos disponibles, el planificador puede distribuir los 10 procesos entre los diferentes núcleos, minimizando la competencia directa por tiempo de CPU y permitiendo que cada proceso obtenga casi todo el tiempo de CPU que necesita.
-
-En conclusión pequeñas diferencias en la prioridad de los procesos no afectan significativamente su tiempo de ejecución cuando no hay una competencia intensa por recursos.
+El rendimiento similar entre procesos con nice=0 y nice=1 demuestra que en sistemas modernos con múltiples núcleos y bajo condiciones de baja carga, pequeñas diferencias en la prioridad de los procesos tienen un impacto mínimo en su tiempo de ejecución. La verdadera diferencia en el rendimiento debido a la prioridad se volvería más evidente en sistemas con alta carga o con recursos limitados de CPU, donde los procesos compiten más intensamente por el tiempo de procesador.
 
 ## Ejercicio 4
+
+```bash
+$ /usr/bin/time -p ./benchmark -p 1000
+Probando fork()...
+real 0.12
+user 0.18
+sys 0.15
+
+$ /usr/bin/time -p ./benchmark -t 1000
+Probando pthread_create()...
+real 0.07
+user 0.00
+sys 0.06
+
+$ /usr/bin/time -p ./benchmark -p -w 1000
+Probando fork()...
+real 0.28
+user 0.15
+sys 0.13
+
+$ /usr/bin/time -p ./benchmark -t -w 1000
+Probando pthread_create()...
+real 0.06
+user 0.00
+sys 0.03
+```
+
 ### 1. ¿Cual de las dos variantes tuvo menos costo, la creación de hilos o la creación de procesos? Justificar.
 
+Según los resultados obtenidos, la creación de hilos tuvo significativamente menos costo que la creación de procesos. Podemos observar esto en las siguientes comparaciones:
+
+**Sin esperar por la terminación (-w no utilizada):**
+- Procesos (`-p 1000`): real 0.12s, user 0.18s, sys 0.15s
+- Hilos (`-t 1000`): real 0.07s, user 0.00s, sys 0.06s
+
+**Esperando por la terminación (-w utilizada):**
+- Procesos (`-p -w 1000`): real 0.28s, user 0.15s, sys 0.13s
+- Hilos (`-t -w 1000`): real 0.06s, user 0.00s, sys 0.03s
+
+La creación de hilos es más eficiente por las siguientes razones:
+
+1. **Memoria compartida**: Los hilos comparten el mismo espacio de direcciones, por lo que no es necesario duplicar la memoria del proceso como ocurre en el caso de `fork()`.
+
+2. **Menor sobrecarga del sistema**: La creación de procesos requiere más operaciones del sistema operativo, como duplicar tablas de páginas, descriptores de archivos, y otros recursos del proceso padre, mientras que los hilos solo necesitan crear una nueva pila y estructura de control.
+
+3. **Contexto de ejecución más ligero**: Los hilos tienen un contexto más pequeño que los procesos, lo que hace que su creación y cambio de contexto sea más rápido.
+
+4. **Uso eficiente de recursos**: Los tiempos de sistema (`sys`) para los hilos son considerablemente menores, lo que indica un menor uso de recursos del kernel.
+
 ### 2. ¿Cuánto afecta el uso de la opción -w?
+
+La opción `-w` hace que el proceso/hilo padre espere a que cada proceso/hilo hijo termine antes de crear el siguiente. Esta opción tiene un impacto diferente en procesos y en hilos:
+
+**Para procesos:**
+- Sin `-w`: real 0.12s, user 0.18s, sys 0.15s 
+- Con `-w`: real 0.28s, user 0.15s, sys 0.13s
+- Impacto: El tiempo real aumenta un 133% (de 0.12s a 0.28s), pero el tiempo total de CPU (user + sys) disminuye ligeramente de 0.33s a 0.28s.
+
+**Para hilos:**
+- Sin `-w`: real 0.07s, user 0.00s, sys 0.06s
+- Con `-w`: real 0.06s, user 0.00s, sys 0.03s
+- Impacto: El tiempo real disminuye ligeramente, y el tiempo de sistema se reduce a la mitad (de 0.06s a 0.03s).
+
+**Análisis del impacto:**
+
+1. **En procesos**: La opción `-w` aumenta significativamente el tiempo real de ejecución porque cada proceso debe completarse antes de crear el siguiente, eliminando el paralelismo. Sin embargo, reduce la contención por recursos del sistema, lo que explica la ligera disminución en el tiempo total de CPU.
+
+2. **En hilos**: La opción `-w` tiene un impacto menor o incluso positivo en el tiempo real, posiblemente debido a:
+   - Menor sobrecarga de gestión al tener menos hilos activos simultáneamente
+   - Mejor utilización de la caché del procesador al tener menos hilos compitiendo por ella
+   - Eliminación de la sobrecarga de sincronización entre múltiples hilos
+
+3. **Diferencias entre procesos e hilos**:
+   - En procesos, esperar por la terminación elimina la posibilidad de paralelismo real entre procesos, lo que aumenta significativamente el tiempo de ejecución.
+   - En hilos, la creación secuencial reduce la sobrecarga del sistema de gestión de hilos, compensando cualquier pérdida de paralelismo.
